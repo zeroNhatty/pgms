@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePowerNodesRequest;
 use App\Http\Requests\UpdatePowerNodesRequest;
-use App\Models\PowerNodes;
+use App\Models\PowerNode;
 
 class PowerNodesController extends Controller
 {
@@ -13,7 +13,7 @@ class PowerNodesController extends Controller
      */
     public function index()
     {
-        return PowerNodes::all();
+        return PowerNode::all();
     }
 
     /**
@@ -35,7 +35,7 @@ class PowerNodesController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(PowerNodes $powerNodes)
+    public function show(PowerNode $powerNodes)
     {
         //
     }
@@ -43,7 +43,7 @@ class PowerNodesController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(PowerNodes $powerNodes)
+    public function edit(PowerNode $powerNodes)
     {
         //
     }
@@ -51,7 +51,7 @@ class PowerNodesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdatePowerNodesRequest $request, PowerNodes $powerNodes)
+    public function update(UpdatePowerNodesRequest $request, PowerNode $powerNodes)
     {
         //
     }
@@ -59,7 +59,7 @@ class PowerNodesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(PowerNodes $powerNodes)
+    public function destroy(PowerNode $powerNodes)
     {
         //
     }

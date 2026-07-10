@@ -17,11 +17,9 @@ return new class extends Migration
             /*
              * active =>  actively pinging node
              * inactive => a node that stopped pinging
-             * deactivated => a node deactivated by a technician for false reports
-             * flagged => a node that is believed not working correctly and required to be inspected
              * being_maintained => a node that is being maintained and doesn't require a pinging
              * */
-            $table->enum("status", ["active", "inactive", "deactivated", "flagged", "being_maintained"])->default("active");
+            $table->enum("status", ["active", "inactive", "being_maintained"])->default("active");
             $table->timestamps();
         });
     }

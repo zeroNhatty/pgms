@@ -18,8 +18,8 @@ class PowerNodesFactory extends Factory
     public function definition(): array
     {
         return [
-            'location' => $this->faker->address,
-            'status' => $this->faker->randomElement(["active", "inactive", "deactivated", "flagged", "being_maintained"]),
+            'location' => $this->faker->address(),
+            'status' => $this->faker->randomElement(["active", "inactive", "being_maintained"]),
         ];
     }
 }
