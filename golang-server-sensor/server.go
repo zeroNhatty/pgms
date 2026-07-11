@@ -6,8 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/joho/godotenv"
 )
 
 type Node struct {
@@ -21,26 +19,29 @@ type NodePing struct {
 	Location string `json:"location"`
 }
 
+type Config struct {
+	PORT     string
+	ENDPOINT string
+}
+
+type NodeRelation struct {
+	NODE_ID        int64
+	PARENT_NODE_ID int64
+}
+
+var config Config
+var nodes []Node
+
 func main() {
 
-	// enviroment variables loading
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("Failed to load enviroment variables" + err.Error())
-		return
-	}
+	setupConfig()
 
-	port := os.Getenv("SERVER_PORT")
-
-	endPoint := os.Getenv("LARAVEL_URL")
-
-	resp, err := http.Get(endPoint + "/api/nodes")
+	resp, err := http.Get(config.ENDPOINT + "/api/nodes")
 	if err != nil {
 		fmt.Println("Error occurred: " + err.Error())
 		return
 	}
 	defer resp.Body.Close()
-
-	var nodes []Node
 
 	err = json.NewDecoder(resp.Body).Decode(&nodes)
 	if err != nil {
@@ -48,12 +49,27 @@ func main() {
 		return
 	}
 
-	for _, node := range nodes {
-		jsonIfied := fmt.Sprintf("id: %d | location: %s | status: %s", node.ID, node.Location, node.Status)
-		fmt.Println(jsonIfied)
-	}
+	handlePing()
+	buildNodeRelationship()
+	// serves the node list
+	serveNodeList()
 
-	http.HandleFunc("/decode", func(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Server starting on port %s\n", config.PORT)
+	if err := http.ListenAndServe(config.PORT, nil); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
+}
+
+func serveNodeList() {
+	http.HandleFunc("/node_collection", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(nodes)
+		//fmt.Println(nodes)
+	})
+}
+
+func handlePing() {
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -68,15 +84,27 @@ func main() {
 
 		fmt.Fprintf(w, "ID: %d | Location: %s", ping.ID, ping.Location)
 	})
+}
 
-	http.HandleFunc("/node_collection", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(nodes)
-		fmt.Println(nodes)
-	})
+func buildNodeRelationship() {
 
-	fmt.Printf("Server starting on port %s\n", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	resp, err := http.Get(config.ENDPOINT + "/api/node_relations")
+	if err != nil {
+		fmt.Println("Error occurred: " + err.Error())
+		return
 	}
+	defer resp.Body.Close()
+	fmt.Println(resp.Body)
+
+}
+
+func setupConfig() bool {
+	port, endPoint := getServerConfig()
+	if port == os.DevNull || endPoint == os.DevNull {
+		fmt.Println("Couldn't load complete enviroment variables!")
+		return false
+	}
+	config.ENDPOINT = endPoint
+	config.PORT = port
+	return true
 }
