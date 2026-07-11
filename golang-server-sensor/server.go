@@ -25,8 +25,11 @@ type Config struct {
 }
 
 type NodeRelation struct {
-	NODE_ID        int64
-	PARENT_NODE_ID int64
+	ID           int64  `json:"id"`
+	NodeID       int64  `json:"node_id"`
+	ParentNodeID int64  `json:"parent_node_id"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
 }
 
 var config Config
@@ -94,7 +97,19 @@ func buildNodeRelationship() {
 		return
 	}
 	defer resp.Body.Close()
-	fmt.Println(resp.Body)
+
+	var relations []NodeRelation
+
+	err = json.NewDecoder(resp.Body).Decode(&relations)
+	if err != nil {
+		fmt.Println("Error decoding JSON payload: " + err.Error())
+		return
+	}
+
+	for _, rel := range relations {
+		fmt.Printf("Relation ID: %d | Node: %d is child of Parent: %d\n",
+			rel.ID, rel.NodeID, rel.ParentNodeID)
+	}
 
 }
 
