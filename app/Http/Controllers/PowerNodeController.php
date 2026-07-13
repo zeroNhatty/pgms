@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePowerNodesRequest;
 use App\Http\Requests\UpdatePowerNodesRequest;
 use App\Models\PowerNode;
+use App\Models\PowerNodeRelation;
 
-class PowerNodesController extends Controller
+class PowerNodeController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -14,6 +15,14 @@ class PowerNodesController extends Controller
     public function index()
     {
         return PowerNode::all();
+    }
+
+    /**
+     * Returns Node Relationship
+     */
+
+    public function nodeRelations(){
+        return PowerNodeRelation::all();
     }
 
     /**

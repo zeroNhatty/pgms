@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\PowerNodes;
+use App\Models\PowerNodeRelation;
+use App\Models\PowerNode;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -19,17 +20,18 @@ class DatabaseSeeder extends Seeder
         User::factory(10)->create();
 
         User::factory()->create([
-            'email' => 'test@example.com',
+            'email' => 'test@t.com',
         ]);
 
-        User::factory()->create([
-            'role' => 'manager',
-        ]);
+        $nodes = PowerNode::factory()->count(20)->create();
 
-        User::factory()->create([
-            'role' => 'administrator',
-        ]);
+        $nodes->skip(1)->each(function ($node) use ($nodes) {
+            $possibleParent = $nodes->where('id', '!=', $node->id)->random();
 
-        PowerNodes::factory(10)->create();
+            PowerNodeRelation::factory()->create([
+                'node_id' => $node->id,
+                'parent_node_id' => $possibleParent->id,
+            ]);
+        });
     }
 }

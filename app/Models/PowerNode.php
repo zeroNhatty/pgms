@@ -2,27 +2,41 @@
 
 namespace App\Models;
 
-use Illuminate\Console\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['location', 'status'])]
-class PowerNodes extends Model
+class PowerNode extends Model
 {
-    /** @use HasFactory<\Database\Factories\PowerNodesFactory> */
+    /** @use HasFactory<\Database\Factories\PowerNodeFactory> */
     use HasFactory;
 
-    public function parents(): HasOne
+    /**
+     * Get the parent nodes for this node.
+     */
+    public function parents(): BelongsToMany
     {
-        return $this->hasOne(PowerNodes::class, 'id', 'parent_node_id');
+        return $this->belongsToMany(
+            PowerNode::class,
+            'power_node_relations',
+            'node_id',
+            'parent_node_id'
+        );
     }
 
+    /**
+     * Get the child nodes for this node.
+     */
     public function children(): BelongsToMany
     {
-        return $this->belongsToMany(PowerNodes::class, 'power_nodes', 'parent_node_id', 'child_id');
+        return $this->belongsToMany(
+            PowerNode::class,
+            'power_node_relations',
+            'parent_node_id',
+            'node_id'
+        );
     }
 
 }

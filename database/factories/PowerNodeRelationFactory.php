@@ -2,13 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\PowerNode;
+use App\Models\PowerNodeRelation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<PowerNode>
+ * @extends Factory<PowerNodeRelation>
  */
-class PowerNodeFactory extends Factory
+class PowerNodeRelationFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -18,8 +18,8 @@ class PowerNodeFactory extends Factory
     public function definition(): array
     {
         return [
-            'location' => $this->faker->address(),
-            'status' => $this->faker->randomElement(["active", "inactive", "being_maintained"]),
+            'node_id' => $this->faker->uuid(),
+            'parent_node_id' => $this->faker->uuid(),
         ];
     }
 }

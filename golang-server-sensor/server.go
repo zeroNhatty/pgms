@@ -42,7 +42,7 @@ func main() {
 	buildNodeRelationship()
 
 	handlePing()
-	// serves the node list
+	// serves the node / relationship list
 	serveNodeList()
 	serveNodeRelationshipList()
 
