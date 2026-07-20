@@ -21,7 +21,8 @@ class PowerNodeController extends Controller
      * Returns Node Relationship
      */
 
-    public function nodeRelations(){
+    public function nodeRelations()
+    {
         return PowerNodeRelation::all();
     }
 
@@ -60,11 +61,14 @@ class PowerNodeController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdatePowerNodesRequest $request, PowerNode $powerNodes)
+    public function update(UpdatePowerNodesRequest $request, PowerNode $powerNode)
     {
-        //
-    }
+        $validated = $request->validated();
 
+        $powerNode->update($validated);
+
+        return response()->json($powerNode);
+    }
     /**
      * Remove the specified resource from storage.
      */

@@ -12,3 +12,5 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 Route::get('/nodes', [PowerNodeController::class, 'index']);
 
 Route::get('/node_relations', [PowerNodeController::class, 'nodeRelations']);
+
+Route::put('/node/update/{powerNode}', [PowerNodeController::class, 'update']);

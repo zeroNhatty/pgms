@@ -12,7 +12,7 @@ class UpdatePowerNodesRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -23,7 +23,7 @@ class UpdatePowerNodesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'status' => 'required|string|in:active,inactive,being_maintained',
         ];
     }
 }
