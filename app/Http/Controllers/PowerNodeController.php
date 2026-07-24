@@ -6,6 +6,7 @@ use App\Http\Requests\StorePowerNodesRequest;
 use App\Http\Requests\UpdatePowerNodesRequest;
 use App\Models\PowerNode;
 use App\Models\PowerNodeRelation;
+use App\Models\Ticket;
 
 class PowerNodeController extends Controller
 {
@@ -45,9 +46,9 @@ class PowerNodeController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(PowerNode $powerNodes)
+    public function show(PowerNode $powerNode)
     {
-        //
+        return response()->json($powerNode);
     }
 
     /**
@@ -65,6 +66,15 @@ class PowerNodeController extends Controller
     {
         $validated = $request->validated();
 
+       $status = $validated['status'];
+
+        if ($status === 'being_maintained' || $status === 'inactive') {
+            Ticket::create([
+                'status'      => $status === 'being_maintained' ? 'assigned' : 'pending',
+                'node_id'     => $powerNode->id,
+                'assignee_id' => null,
+            ]);
+        }
         $powerNode->update($validated);
 
         return response()->json($powerNode);
