@@ -16,5 +16,7 @@ Route::get('/node_relations', [PowerNodeController::class, 'nodeRelations']);
 
 Route::put('/node/update/{powerNode}', [PowerNodeController::class, 'update']);
 
+Route::put('/tickets/{ticket}', [TicketController::class, 'update']);
+
 Route::get('/node/{id}', [PowerNodeController::class, 'show']);
-Route::get('/user/{id}', [UserController::class, 'indexUserByID']);
+Route::get('/user/{id}', [UserController::class, 'show']);
