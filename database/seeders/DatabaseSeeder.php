@@ -20,7 +20,13 @@ class DatabaseSeeder extends Seeder
         User::factory(10)->create();
 
         User::factory()->create([
-            'email' => 'test@t.com',
+            'email' => 't@t.com',
+            'role' => 'technician'
+        ]);
+
+        User::factory()->create([
+            'email' => 'a@a.com',
+            'role' => 'manager',
         ]);
 
         $nodes = PowerNode::factory()->count(20)->create();

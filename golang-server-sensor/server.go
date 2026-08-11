@@ -165,6 +165,13 @@ func monitorNodeStatus() {
 				// Trigger the Laravel update asynchronously so it doesn't stall this checker
 				go updateLaravelNodeStatus(nodeID, "inactive")
 
+				// kills a parents children
+				for _, relation := range nodeRelations {
+					if relation.ParentNodeID == nodeID {
+						go updateLaravelNodeStatus(relation.NodeID, "inactive")
+					}
+				}
+
 				delete(pingTracker, nodeID)
 			}
 		}

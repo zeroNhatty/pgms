@@ -39,4 +39,9 @@ class PowerNode extends Model
         );
     }
 
+    public function node()
+    {
+        return $this->belongsTo(PowerNode::class, 'node_id');
+    }
+
 }

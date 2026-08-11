@@ -19,7 +19,7 @@ class PowerNodeFactory extends Factory
     {
         return [
             'location' => $this->faker->address(),
-            'status' => $this->faker->randomElement(["active", "inactive", "being_maintained"]),
+            'status' => $this->faker->randomElement(["active"]),
         ];
     }
 }
