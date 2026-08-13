@@ -2,7 +2,11 @@
 
 namespace App\Observers;
 
+use App\Events\TicketCreated;
 use App\Models\Ticket;
+use App\Events\TicketUpdated;
+use Illuminate\Support\Facades\Log;
+
 
 class TicketObserver
 {
@@ -11,7 +15,7 @@ class TicketObserver
      */
     public function created(Ticket $ticket): void
     {
-        //
+        event(new TicketCreated($ticket));
     }
 
     /**
@@ -22,6 +26,13 @@ class TicketObserver
         if ($ticket -> wasChanged('status')) {
             $this->syncNodeStatus($ticket);
         }
+
+        Log::info('Ticket observer fired', [
+                'ticket_id' => $ticket->id,
+                'status' => $ticket->status,
+                'changes' => $ticket->getChanges(),
+            ]);
+        event(new TicketUpdated($ticket));
     }
 
     /**

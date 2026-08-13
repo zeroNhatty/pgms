@@ -56,7 +56,6 @@ func main() {
 	serveNodeRelationshipList()
 
 	handlePing()
-	handleBeingMaintainedStatusUpdate()
 
 	fmt.Printf("Server starting on port %s\n", config.PORT)
 	if err := http.ListenAndServe(config.PORT, nil); err != nil {
@@ -68,7 +67,7 @@ func serveNodeList() {
 	http.HandleFunc("/node_collection", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(nodes)
-		//fmt.Println(nodes)
+		fmt.Println("Requested Nodes")
 	})
 }
 
@@ -126,29 +125,6 @@ func buildNodeRelationship() {
 	}*/
 }
 
-func handleBeingMaintainedStatusUpdate() {
-	http.HandleFunc("/ping/maintenance", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var ping NodePing
-		err := json.NewDecoder(r.Body).Decode(&ping)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// TODO: edge case of when the server starts it doesn't assume everything is active so will prolly look fr none existent nodes
-		go updateLaravelNodeStatus(ping.ID, "being_maintained")
-		delete(pingTracker, ping.ID)
-
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Node update acknowledged for node %d", ping.ID)
-	})
-}
-
 func monitorNodeStatus() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -166,11 +142,13 @@ func monitorNodeStatus() {
 				go updateLaravelNodeStatus(nodeID, "inactive")
 
 				// kills a parents children
-				for _, relation := range nodeRelations {
+				/*
+					for _, relation := range nodeRelations {
 					if relation.ParentNodeID == nodeID {
 						go updateLaravelNodeStatus(relation.NodeID, "inactive")
 					}
-				}
+					}
+				*/
 
 				delete(pingTracker, nodeID)
 			}
