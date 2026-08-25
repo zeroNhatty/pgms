@@ -65,6 +65,7 @@ func main() {
 
 func serveNodeList() {
 	http.HandleFunc("/node_collection", func(w http.ResponseWriter, r *http.Request) {
+		buildNodeList()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(nodes)
 		fmt.Println("Requested Nodes")
