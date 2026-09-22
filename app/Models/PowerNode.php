@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['location', 'status'])]
+#[Fillable(['longitude','latitude', 'status'])]
 class PowerNode extends Model
 {
     /** @use HasFactory<\Database\Factories\PowerNodeFactory> */
@@ -44,4 +44,8 @@ class PowerNode extends Model
         return $this->belongsTo(PowerNode::class, 'node_id');
     }
 
+    protected $casts = [
+            'longitude' => 'float',
+            'latitude' => 'float',
+    ];
 }

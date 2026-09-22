@@ -7,6 +7,7 @@ use App\Http\Requests\UpdatePowerNodesRequest;
 use App\Models\PowerNode;
 use App\Models\PowerNodeRelation;
 use App\Models\Ticket;
+use Illuminate\Support\Facades\DB;
 
 class PowerNodeController extends Controller
 {
@@ -40,7 +41,46 @@ class PowerNodeController extends Controller
      */
     public function store(StorePowerNodesRequest $request)
     {
-        //
+        $data = $request->validated();
+
+        $result = DB::transaction(function () use ($data) {
+            $nodeIds = [];
+
+            foreach ($data['nodes'] as $node) {
+                $powerNode = PowerNode::create([
+                    'longitude' => $node['longitude'],
+                    'latitude' => $node['latitude'],
+                ]);
+
+                $nodeIds[$node['clientId']] = $powerNode->id;
+            }
+
+            foreach ($data['relations'] ?? [] as $relation) {
+                if (
+                    !isset($nodeIds[$relation['from']]) ||
+                    !isset($nodeIds[$relation['to']])
+                ) {
+                    throw new \InvalidArgumentException(
+                        'Relation references an unknown node.'
+                    );
+                }
+
+                PowerNodeRelation::create([
+                    'node_id' => $nodeIds[$relation['to']],
+                    'parent_node_id' => $nodeIds[$relation['from']],
+                ]);
+            }
+
+            return [
+                'nodes' => PowerNode::whereIn('id', array_values($nodeIds))->get(),
+                'relations' => PowerNodeRelation::whereIn(
+                    'node_id',
+                    array_values($nodeIds)
+                )->get(),
+            ];
+        });
+
+        return response()->json($result, 201);
     }
 
     /**
@@ -62,17 +102,31 @@ class PowerNodeController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdatePowerNodesRequest $request, PowerNode $powerNode)
-    {
+    public function update(
+        UpdatePowerNodesRequest $request,
+        PowerNode $powerNode,
+    ) {
         $validated = $request->validated();
 
-       $status = $validated['status'];
+        $status = $validated["status"];
 
-        if ($status === 'being_maintained' || $status === 'inactive') {
+        if ($status === "being_maintained" || $status === "inactive") {
+            $hasActiveTicket = Ticket::where("node_id", $powerNode->id)
+                ->active()
+                ->exists();
+
+            if ($hasActiveTicket) {
+                return response()->json(
+                    ["error" => "Ticket already exists for this node"],
+                    422,
+                );
+            }
+
             Ticket::create([
-                'status'      => $status === 'being_maintained' ? 'assigned' : 'pending',
-                'node_id'     => $powerNode->id,
-                'assignee_id' => null,
+                "status" =>
+                    $status === "being_maintained" ? "assigned" : "pending",
+                "node_id" => $powerNode->id,
+                "assignee_id" => null,
             ]);
         }
         $powerNode->update($validated);

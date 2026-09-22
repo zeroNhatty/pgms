@@ -20,3 +20,4 @@ Route::put('/tickets/{ticket}', [TicketController::class, 'update']);
 
 Route::get('/node/{id}', [PowerNodeController::class, 'show']);
 Route::get('/user/{id}', [UserController::class, 'show']);
+Route::post('/power-grid', [PowerNodeController::class, 'store']);

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('power_node_relations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('node_id')->unique()->constrained('power_nodes');
+            $table->foreignId('node_id')->constrained('power_nodes')->cascadeOnDelete();
             $table->foreignId('parent_node_id')->constrained('power_nodes')->cascadeOnDelete();
             $table->timestamps();
         });

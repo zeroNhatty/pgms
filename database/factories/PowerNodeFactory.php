@@ -18,8 +18,9 @@ class PowerNodeFactory extends Factory
     public function definition(): array
     {
         return [
-            'location' => $this->faker->address(),
-            'status' => $this->faker->randomElement(["active"]),
+            "location" =>
+                $this->faker->longitude() . ", " . $this->faker->latitude(),
+            "status" => $this->faker->randomElement(["active"]),
         ];
     }
 }

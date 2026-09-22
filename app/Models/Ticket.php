@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Observers\TicketObserver;
-
 use Illuminate\Database\Eloquent\BroadcastsEvents;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,5 +25,10 @@ class Ticket extends Model
     public function assignee()
     {
         return $this->belongsTo(User::class, "assignee_id");
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereNotIn("status", ["solved"]);
     }
 }

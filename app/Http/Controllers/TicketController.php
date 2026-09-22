@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ticket;
 use Illuminate\Http\Request;
-
+use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
 {
@@ -13,7 +13,7 @@ class TicketController extends Controller
      */
     public function index()
     {
-        return response()->json(Ticket::with(['node', 'assignee'])->get());
+        return response()->json(Ticket::with(["node", "assignee"])->get());
     }
 
     /**
@@ -22,14 +22,24 @@ class TicketController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'status'      => 'required|in:solved,pending,assigned',
-            'node_id'     => 'required|exists:power_nodes,id',
-            'assignee_id' => 'nullable|exists:users,id',
+            "status" => "required|in:solved,pending,assigned",
+            "node_id" => "required|exists:power_nodes,id",
+            "assignee_id" => "nullable|exists:users,id",
         ]);
+
+        $activeTicketExists = Ticket::where("node_id", $request->node_id)
+            ->active()
+            ->exists();
+
+        if ($activeTicketExists) {
+            return response()->json(
+                ["error" => "Active ticket already exists for this node"],
+                422,
+            );
+        }
 
         $ticket = Ticket::create($validated);
         return response()->json($ticket, 201);
-
     }
 
     /**
@@ -46,13 +56,13 @@ class TicketController extends Controller
     public function update(Request $request, Ticket $ticket)
     {
         $validated = $request->validate([
-            'assignee_id' => 'required|exists:users,id',
-            'status'      => 'required|string',
+            "assignee_id" => "required|exists:users,id",
+            "status" => "required|in:solved,pending,assigned",
         ]);
 
         $ticket->update($validated);
 
-        return response()->json($ticket->load(['node', 'assignee']));
+        return response()->json($ticket->load(["node", "assignee"]));
     }
 
     /**
