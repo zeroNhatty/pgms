@@ -2,7 +2,7 @@
 import type { Ticket } from '~/pages/operational/tickets.vue';
 
 const user = useUserSession()['user']
-const client = useSanctumClient(); 
+const client = useSanctumClient();
 const emit = defineEmits(['claimed', 'solved']);
 
 const props = defineProps<{
@@ -70,12 +70,12 @@ async function ticketResolve() {
   <dialog ref="dialogRef" class="modal modal-bottom sm:modal-middle">
     <div v-if="props.ticket" class="modal-box">
       <h3 class="text-lg font-bold">Ticket #{{ props.ticket.id }}</h3>
-      
+
       <div class="py-4 space-y-2">
         <p><strong>Location:</strong> {{ props.ticket.node?.location ?? `Node #${props.ticket.node_id}` }}</p>
         <p><strong>Status:</strong> {{ props.ticket.status }}</p>
         <p>
-          <strong>Assignee:</strong> 
+          <strong>Assignee:</strong>
           <span v-if="props.ticket.assignee">
             {{ props.ticket.assignee.firstname }} {{ props.ticket.assignee.middle_name ?? '' }} {{ props.ticket.assignee.lastname }}
           </span>
@@ -85,7 +85,7 @@ async function ticketResolve() {
 
       <div class="modal-action">
         <form method="dialog">
-          <button v-if="props.ticket.status === 'pending'" class="btn btn-primary mr-2" @click="technicianClaim">
+          <button v-if="props.ticket.status === 'pending' && user?.role != 'manager'" class="btn btn-primary mr-2" @click="technicianClaim">
             Handle Issue
           </button>
           <button v-if="props.ticket.status === 'assigned' && user?.id === props.ticket.assignee_id" class="btn btn-primary mr-2" @click="ticketResolve">
