@@ -12,14 +12,14 @@ import (
 )
 
 type Node struct {
-	ID       int64  `json:"id"`
-	Location string `json:"location"`
-	Status   string `json:"status"`
+	ID        int64   `json:"id"`
+	Longitude float64 `json:"longitude"`
+	Latitude  float64 `json:"latitude"`
+	Status    string  `json:"status"`
 }
 
 type NodePing struct {
-	ID       int64  `json:"id"`
-	Location string `json:"location"`
+	ID int64 `json:"id"`
 }
 
 type Config struct {
@@ -36,27 +36,29 @@ type NodeRelation struct {
 var (
 	pingTracker      = make(map[int64]time.Time)
 	pingTrackerMutex sync.Mutex
-)
 
-var (
-	config        Config
+	dataMutex     sync.RWMutex
 	nodes         []Node
 	nodeRelations []NodeRelation
+
+	config Config
 )
 
 func main() {
-	setupConfig()
+	if !setupConfig() {
+		log.Fatal("Could not load complete environment configuration")
+	}
 
 	buildNodeList()
 	buildNodeRelationship()
 
 	go monitorNodeStatus()
-	// serves the node / relationship list
+
 	serveNodeList()
 	serveNodeRelationshipList()
 
 	handlePing()
-	handleBeingMaintainedStatusUpdate()
+	handleUpdateStatus()
 
 	fmt.Printf("Server starting on port %s\n", config.PORT)
 	if err := http.ListenAndServe(config.PORT, nil); err != nil {
@@ -66,14 +68,24 @@ func main() {
 
 func serveNodeList() {
 	http.HandleFunc("/node_collection", func(w http.ResponseWriter, r *http.Request) {
+		buildNodeList()
+
+		dataMutex.RLock()
+		defer dataMutex.RUnlock()
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(nodes)
-		//fmt.Println(nodes)
+		fmt.Println("Requested Nodes")
 	})
 }
 
 func serveNodeRelationshipList() {
 	http.HandleFunc("/node_relation_collection", func(w http.ResponseWriter, r *http.Request) {
+		buildNodeRelationship()
+
+		dataMutex.RLock()
+		defer dataMutex.RUnlock()
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(nodeRelations)
 	})
@@ -87,8 +99,7 @@ func handlePing() {
 		}
 
 		var ping NodePing
-		err := json.NewDecoder(r.Body).Decode(&ping)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&ping); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -106,47 +117,82 @@ func handlePing() {
 	})
 }
 
-func buildNodeRelationship() {
-	resp, err := http.Get(config.ENDPOINT + "/api/node_relations")
-	if err != nil {
-		fmt.Println("Error occurred: " + err.Error())
-		return
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&nodeRelations)
-	if err != nil {
-		fmt.Println("Error decoding JSON payload: " + err.Error())
-		return
-	}
-
-	/*for _, rel := range relations {
-		fmt.Printf("Relation ID: %d | Node: %d is child of Parent: %d\n",
-			rel.ID, rel.NodeID, rel.ParentNodeID)
-	}*/
-}
-
-func handleBeingMaintainedStatusUpdate() {
-	http.HandleFunc("/ping/maintenance", func(w http.ResponseWriter, r *http.Request) {
+func handleUpdateStatus() {
+	http.HandleFunc("/update_status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var ping NodePing
-		err := json.NewDecoder(r.Body).Decode(&ping)
-		if err != nil {
+		var req struct {
+			ID     int64  `json:"id"`
+			Status string `json:"status"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		// TODO: edge case of when the server starts it doesn't assume everything is active so will prolly look fr none existent nodes
-		go updateLaravelNodeStatus(ping.ID, "being_maintained")
-		delete(pingTracker, ping.ID)
+		pingTrackerMutex.Lock()
+		if req.Status == "inactive" {
+			delete(pingTracker, req.ID)
+		} else if req.Status == "active" {
+			pingTracker[req.ID] = time.Now()
+		}
+		pingTrackerMutex.Unlock()
+
+		dataMutex.Lock()
+		for i := range nodes {
+			if nodes[i].ID == req.ID {
+				nodes[i].Status = req.Status
+				break
+			}
+		}
+		dataMutex.Unlock()
+
+		updateLaravelNodeStatus(req.ID, req.Status)
 
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Node update acknowledged for node %d", ping.ID)
+		fmt.Fprintf(w, "Status for node %d updated to %s", req.ID, req.Status)
 	})
+}
+
+func buildNodeRelationship() {
+	resp, err := http.Get(config.ENDPOINT + "/api/node_relations")
+	if err != nil {
+		fmt.Printf("Error fetching relations: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var fetchedRelations []NodeRelation
+	if err := json.NewDecoder(resp.Body).Decode(&fetchedRelations); err != nil {
+		fmt.Printf("Error decoding relations JSON: %v\n", err)
+		return
+	}
+
+	dataMutex.Lock()
+	nodeRelations = fetchedRelations
+	dataMutex.Unlock()
+}
+
+func buildNodeList() {
+	resp, err := http.Get(config.ENDPOINT + "/api/nodes")
+	if err != nil {
+		fmt.Printf("Error fetching nodes: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var fetchedNodes []Node
+	if err := json.NewDecoder(resp.Body).Decode(&fetchedNodes); err != nil {
+		fmt.Printf("Error decoding nodes JSON: %v\n", err)
+		return
+	}
+
+	dataMutex.Lock()
+	nodes = fetchedNodes
+	dataMutex.Unlock()
 }
 
 func monitorNodeStatus() {
@@ -158,13 +204,11 @@ func monitorNodeStatus() {
 		now := time.Now()
 
 		for nodeID, lastPing := range pingTracker {
-			// assumes node is dead after 10 sec
+			// Mark node dead after 10 seconds without ping
 			if now.Sub(lastPing) > 10*time.Second {
-				fmt.Printf("ALERT: Node %d has stopped pinging! Updating Laravel...\n", nodeID)
+				fmt.Printf("ALERT: Node %d stopped pinging! Updating Laravel to inactive...\n", nodeID)
 
-				// Trigger the Laravel update asynchronously so it doesn't stall this checker
 				go updateLaravelNodeStatus(nodeID, "inactive")
-
 				delete(pingTracker, nodeID)
 			}
 		}
@@ -174,56 +218,56 @@ func monitorNodeStatus() {
 
 func updateLaravelNodeStatus(nodeID int64, status string) {
 	node := getNode(nodeID)
-	payload, _ := json.Marshal(map[string]interface{}{
-		"id":       node.ID,
-		"location": node.Location,
-		"status":   status,
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"status":    status,
+		"longitude": node.Longitude,
+		"latitude":  node.Latitude,
 	})
+	if err != nil {
+		fmt.Printf("Failed to marshal update payload for node %d: %v\n", nodeID, err)
+		return
+	}
 
 	url := fmt.Sprintf("%s/api/node/update/%d", config.ENDPOINT, nodeID)
-	req, _ := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(payload))
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(payload))
+	if err != nil {
+		fmt.Printf("Failed to create HTTP request for node %d: %v\n", nodeID, err)
+		return
+	}
 
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
+	client := &http.Client{Timeout: 5 * time.Second}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("Failed to notify Laravel for node %d: %v\n", nodeID, err)
+		return
 	}
 	defer resp.Body.Close()
-	fmt.Println("Update Laravel : ", nodeID, " | Status : ", status)
+
+	fmt.Printf("Updated Laravel -> Node: %d | Status: %s (HTTP %d)\n", nodeID, status, resp.StatusCode)
 }
 
-func buildNodeList() {
-	resp, err := http.Get(config.ENDPOINT + "/api/nodes")
-	if err != nil {
-		fmt.Println("Error occurred: " + err.Error())
-		return
-	}
-	defer resp.Body.Close()
+func getNode(nodeID int64) Node {
+	dataMutex.RLock()
+	defer dataMutex.RUnlock()
 
-	err = json.NewDecoder(resp.Body).Decode(&nodes)
-	if err != nil {
-		fmt.Println("Error decoding JSON: " + err.Error())
-		return
+	for _, node := range nodes {
+		if node.ID == nodeID {
+			return node
+		}
 	}
+	return Node{ID: nodeID}
 }
 
 func setupConfig() bool {
 	port, endPoint := getServerConfig()
-	if port == os.DevNull || endPoint == os.DevNull {
-		fmt.Println("Couldn't load complete enviroment variables!")
+	if port == os.DevNull || endPoint == os.DevNull || port == "" || endPoint == "" {
+		fmt.Println("Couldn't load complete environment variables!")
 		return false
 	}
 	config.ENDPOINT = endPoint
 	config.PORT = port
 	return true
-}
-
-func getNode(nodeID int64) Node {
-	for i, node := range nodes {
-		if node.ID == nodeID {
-			return nodes[i]
-		}
-	}
-	return Node{}
 }

@@ -3,17 +3,35 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Ticket::with(['node', 'assignee'])->get());
+
+        $query = Ticket::with(['node', 'assignee'])->latest();
+
+        // by ticket status
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        // by nide condition
+        if ($request->filled('node_status') && $request->node_status !== 'all') {
+            $query->whereHas('node', function ($q) use ($request) {
+                $q->where('status', $request->node_status);
+            });
+        }
+
+        // 8 element per page
+        $perPage = $request->integer('per_page', 8);
+
+        return response()->json($query->paginate($perPage));
     }
 
     /**
@@ -22,15 +40,24 @@ class TicketController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'status'      => 'required|in:solved,pending,assigned',
-            'node_id'     => 'required|exists:power_nodes,id',
-            'assignee_id' => 'nullable|exists:users,id',
+            "status" => "required|in:solved,pending,assigned",
+            "node_id" => "required|exists:power_nodes,id",
+            "assignee_id" => "nullable|exists:users,id",
         ]);
 
+        $activeTicketExists = Ticket::where("node_id", $request->node_id)
+            ->active()
+            ->exists();
+
+        if ($activeTicketExists) {
+            return response()->json(
+                ["error" => "Active ticket already exists for this node"],
+                422,
+            );
+        }
+
         $ticket = Ticket::create($validated);
-
         return response()->json($ticket, 201);
-
     }
 
     /**
@@ -47,13 +74,13 @@ class TicketController extends Controller
     public function update(Request $request, Ticket $ticket)
     {
         $validated = $request->validate([
-            'assignee_id' => 'required|exists:users,id',
-            'status'      => 'required|string',
+            "assignee_id" => "required|exists:users,id",
+            "status" => "required|in:solved,pending,assigned",
         ]);
 
         $ticket->update($validated);
 
-        return response()->json($ticket->load(['node', 'assignee']));
+        return response()->json($ticket->load(["node", "assignee"]));
     }
 
     /**

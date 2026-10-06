@@ -12,7 +12,24 @@ class UserController extends Controller
      */
     public function index()
     {
-        //
+        $users = User::withCount([
+            // active ticekts
+            'assignedTickets as active_tickets_count' => function ($query) {
+                $query->where('status', 'assigned');
+            },
+            // solved tickets
+            'assignedTickets as solved_tickets_count' => function ($query) {
+                $query->where('status', 'solved');
+            },
+        ])
+    ->with(['assignedTickets' => function ($query) {
+        $query->where('status', 'assigned')->with('node:id,longitude,latitude');
+    }])
+    ->orderBy('role', 'asc')
+    ->orderBy('firstname', 'asc')
+    ->get();
+
+    return response()->json($users);
     }
 
     /**

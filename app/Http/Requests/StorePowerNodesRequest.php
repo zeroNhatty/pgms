@@ -12,7 +12,7 @@ class StorePowerNodesRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -23,7 +23,14 @@ class StorePowerNodesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'nodes' => ['required', 'array', 'min:1'],
+            'nodes.*.clientId' => ['required', 'string'],
+            'nodes.*.longitude' => ['required', 'numeric', 'between:-180,180'],
+            'nodes.*.latitude' => ['required', 'numeric', 'between:-90,90'],
+
+            'relations' => ['sometimes', 'array'],
+            'relations.*.from' => ['required', 'string'],
+            'relations.*.to' => ['required', 'string', 'different:relations.*.from'],
         ];
     }
 }

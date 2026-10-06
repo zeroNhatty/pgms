@@ -30,7 +30,7 @@ class UserFactory extends Factory
             'lastname' => fake()->name(),
             'date_of_birth' => fake()->date(),
             'gender' => $this->faker->randomElement(["male", "female"]),
-            'role' => $this->faker->randomElement(["technician", "manager"]),
+            'role' => $this->faker->randomElement(["technician", "technician", "technician", "manager"]),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
