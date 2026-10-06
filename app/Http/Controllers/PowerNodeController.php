@@ -107,7 +107,6 @@ class PowerNodeController extends Controller
         PowerNode $powerNode,
     ) {
         $validated = $request->validated();
-
         $status = $validated["status"];
 
         if ($status === "being_maintained" || $status === "inactive") {
@@ -115,20 +114,17 @@ class PowerNodeController extends Controller
                 ->active()
                 ->exists();
 
-            if ($hasActiveTicket) {
-                return response()->json(
-                    ["error" => "Ticket already exists for this node"],
-                    422,
-                );
+            // only create new ticket if there is no active ticket
+            if (! $hasActiveTicket) {
+                Ticket::create([
+                    "status" => $status === "being_maintained" ? "assigned" : "pending",
+                    "node_id" => $powerNode->id,
+                    "assignee_id" => null,
+                ]);
             }
-
-            Ticket::create([
-                "status" =>
-                    $status === "being_maintained" ? "assigned" : "pending",
-                "node_id" => $powerNode->id,
-                "assignee_id" => null,
-            ]);
         }
+
+        // always update node ststua
         $powerNode->update($validated);
 
         return response()->json($powerNode);

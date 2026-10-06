@@ -11,9 +11,27 @@ class TicketController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Ticket::with(["node", "assignee"])->get());
+
+        $query = Ticket::with(['node', 'assignee'])->latest();
+
+        // by ticket status
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        // by nide condition
+        if ($request->filled('node_status') && $request->node_status !== 'all') {
+            $query->whereHas('node', function ($q) use ($request) {
+                $q->where('status', $request->node_status);
+            });
+        }
+
+        // 8 element per page
+        $perPage = $request->integer('per_page', 8);
+
+        return response()->json($query->paginate($perPage));
     }
 
     /**
