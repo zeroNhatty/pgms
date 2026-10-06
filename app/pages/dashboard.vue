@@ -1,8 +1,12 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { DrawMode } from '~/components/DrawMode';
+
+</script>
 <template>
     <main>
         <ClientOnly>
-            <LazyCityMap />
+            <LazyCityMap  :setup="true"
+            :mode="DrawMode.Default"/>
             <template #fallback>
                 <div class="loading-state">Loading City Map...</div>
             </template>

@@ -19,6 +19,7 @@ import { defaults as defaultInteractions } from "ol/interaction/defaults.js";
 
 import { createNodeLayer } from "../grid/nodeLayer";
 import { createConnectionLayer } from "../grid/connectionLayer";
+import { createVoronoiLayer } from "../grid/voronoiLayer";
 
 export function createCityMap( target: string ) {
   const base = new TileLayer({
@@ -46,6 +47,7 @@ export function createCityMap( target: string ) {
   const connectionLayer = createConnectionLayer(
       connectionSource,
     );
+  const { layer: voronoiLayer, source: voronoiSource } = createVoronoiLayer();
 
   const clipStyle = new Style({
     fill: new Fill({
@@ -90,6 +92,7 @@ export function createCityMap( target: string ) {
     layers: [
       base,
       clipLayer,
+      voronoiLayer,
       connectionLayer,
       nodeLayer,
     ],
@@ -116,5 +119,7 @@ export function createCityMap( target: string ) {
     nodeSource,
     connectionSource,
     nodeLayer,
+    voronoiLayer,
+    voronoiSource
   };
 }

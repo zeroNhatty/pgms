@@ -8,9 +8,10 @@ definePageMeta({
 });
 
 const NodeSchema = z.object({
-    id: z.number().int(),
-    location: z.string(),
-    status: z.string(),
+  id: z.number().int(),
+  longitude: z.coerce.number(),
+  latitude: z.coerce.number(),
+  status: z.string(),
 });
 
 const client = useSanctumClient();
@@ -75,7 +76,7 @@ onUnmounted(() => {
                         </td>
 
                         <td class="font-medium">
-                            {{ node.location }}
+                            {{ node.longitude + ", " +node.latitude }}
                         </td>
 
                         <td>

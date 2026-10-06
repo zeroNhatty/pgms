@@ -15,14 +15,6 @@ definePageMeta({
   </div>
 
   <label class="tab">
-    <input type="radio" name="my_tabs_4"/>
-    Manage Tickets
-  </label>
-  <div class="tab-content bg-base-100 border-base-300 p-6">
-      <ManageTickets/>
-  </div>
-
-  <label class="tab">
     <input type="radio" name="my_tabs_4" />
     Manage Nodes
   </label>
