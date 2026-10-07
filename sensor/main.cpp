@@ -1,0 +1,222 @@
+#include "raylib.h"
+#include "imgui.h"
+#include "rlImGui.h"
+#include "values.h"
+#include "httplib.h"
+#include "imgui_internal.h"
+#include "json.hpp"
+#include "node.h"
+
+httplib::Client cli("http://localhost:5050");
+httplib::Server svr;
+
+static bool get_node_collection() {
+    if (auto res = cli.Get("/node_collection")) {
+        sensor_nodes.clear();
+        sensor_nodes.shrink_to_fit();
+        if (res->status == httplib::StatusCode::OK_200) {
+            nlohmann::json j = nlohmann::json::parse(res->body);
+            if (j.is_array() && !j.empty()) {
+                for (const auto& item : j) {
+                    Node n;
+                    n.node_id= item["id"].get<int64_t>();
+                    n.longitude = item["longitude"].get<double>();
+                    n.latitude  = item["latitude"].get<double>();
+                    n.status   = resolve_status(item["status"].get<std::string>());
+
+                    sensor_nodes.push_back(n);
+                }
+                return true;
+            }
+            else {
+                std::cout << "Empty or invalid response array!" << std::endl;
+            }
+        }
+        else {
+            std::cout << "Couldn't get node collection! Status: " << res->status <<std::endl;
+        }
+    }
+    return false;
+}
+
+static void get_node_relationship_collection() {
+    if (auto res = cli.Get("/node_relation_collection")) {
+        if (res->status == httplib::StatusCode::OK_200) {
+            nlohmann::json j = nlohmann::json::parse(res->body);
+            if (j.is_array() && !j.empty()) {
+                for (const auto& item : j) {
+                    sensor_nodes_relation[item["parent_node_id"]].push_back(item["node_id"]);
+                }
+            }
+            else {
+                std::cout << "Empty or invalid response array!" << std::endl;
+            }
+        }
+        else {
+            std::cout << "Couldn't get node relationship collection! Status: " << res->status <<std::endl;
+        }
+    }
+}
+
+static void ping(Node* node) {
+    nlohmann::json json_payload;
+    json_payload["id"] = node->node_id;
+
+    if (auto res = cli.Post("/ping", json_payload.dump(), "application/json")) {
+        if (res->status != 200) {
+            std::cout << "Ping failed status: " << res->status << std::endl;
+        }
+    } else {
+        std::cout << "Ping execution network error" << std::endl;
+    }
+}
+
+static void notify_status_change(int64_t node_id, const std::string& status) {
+    nlohmann::json payload = {
+        {"id", node_id},
+        {"status", status}
+    };
+
+    if (auto res = cli.Post("/update_status", payload.dump(), "application/json")) {
+        if (res->status != 200) {
+            std::cout << "Failed to update status on Go server: " << res->status << std::endl;
+        }
+    } else {
+        std::cout << "Network error sending status update to Go server" << std::endl;
+    }
+}
+
+static void handle_relational_kill(int64_t inactiveNodeID) {
+    auto parentNode = sensor_nodes_relation.find(inactiveNodeID);
+    if (parentNode == sensor_nodes_relation.end()) {
+        std::cout << "Node "<< inactiveNodeID <<" has no Children!" << std::endl;
+        return;
+    }
+    for (int64_t node : parentNode->second) {
+
+        // so looping parent child relation doesn't crash the system
+        Node* fetchedNode = findNode(node);
+        if (fetchedNode->status == INACTIVE) continue;
+        fetchedNode->status = INACTIVE;
+
+        //notify node death
+        notify_status_change(node, "inactive");
+
+        // this could be disasters but for a simple simulator I would say its fine
+        handle_relational_kill(node);
+    }
+}
+
+static int selected_node_id = -1;
+static Node selected_node;
+
+static void draw_nodes(std::chrono::steady_clock::time_point& last_refresh_time) {
+    auto current_time = std::chrono::steady_clock::now();
+
+    if (std::chrono::duration_cast<std::chrono::seconds>(current_time - last_refresh_time).count() >= 10) {
+        get_node_collection();
+        last_refresh_time = current_time;
+    }
+
+    ImGui::BeginGroup();
+    int colo = 1;
+    for (const auto& node : sensor_nodes) {
+        if (Node::draw_node(node.node_id, node.status)) {
+            selected_node_id = node.node_id;
+            selected_node = node;
+        }
+        if (colo < 5) {
+            ImGui::SameLine();
+            colo++;
+        } else {
+            colo = 1;
+        }
+    }
+    ImGui::EndGroup();
+}
+
+int main() {
+    InitWindow(1280, 720, "PGM Node Simulator");
+    SetTargetFPS(60);
+    rlImGuiSetup(true);
+
+    bool fetched_node_collection = get_node_collection();
+    get_node_relationship_collection();
+
+    // timer
+    auto last_ping_time = std::chrono::steady_clock::now();
+    auto last_ping_time_list_refresh = std::chrono::steady_clock::now();
+
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(BLACK);
+        rlImGuiBegin();
+
+        ImGui::Begin("Sensor Status Dashboard");
+        if (!fetched_node_collection) {
+            ImGui::TextColored(COLOR_NODE_INACTIVE, "Couldn't Retrieve Nodes!");
+        }
+        else {
+            draw_nodes(last_ping_time_list_refresh);
+
+            // Check if 3 seconds have passed before looping through active elements
+            auto current_time = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::seconds>(current_time - last_ping_time).count() >= 3) {
+
+                for (auto& node : sensor_nodes) {
+                    if (node.status == ACTIVE) {
+                        ping(&node);
+                    }
+                }
+                last_ping_time = current_time;
+            }
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::SameLine();
+
+            if (selected_node_id != -1) {
+                ImGui::BeginChild("NodeDetailsPanel", ImVec2(300, 250), ImGuiChildFlags_Borders);
+                ImGui::Text("--- Node Details ---");
+
+                std::string id_text = "ID: " + std::to_string(selected_node.node_id);
+                ImGui::Text("%s", id_text.c_str());
+                ImGui::Text("Latitude:  %.6f", selected_node.latitude);
+                ImGui::Text("Longitude: %.6f", selected_node.longitude);
+
+                ImGui::Text("Change Status:");
+                if (ImGui::RadioButton("Active", selected_node.status == ACTIVE)) {
+                    selected_node.status = ACTIVE;
+                    notify_status_change(selected_node.node_id, "active");
+                }
+                if (ImGui::RadioButton("Inactive", selected_node.status == INACTIVE)) {
+                    selected_node.status = INACTIVE;
+                    //making sure we are killing it
+                    notify_status_change(selected_node.node_id, "inactive");
+
+                    handle_relational_kill(selected_node.node_id);
+                }
+                
+                // Synchronize selection state edits back down into our array cache container
+                for (auto& node : sensor_nodes) {
+                    if (node.node_id == selected_node_id) {
+                        node.status = selected_node.status;
+                        break;
+                    }
+                }
+
+                if (ImGui::Button("Close Details")) { selected_node_id = -1; }
+                ImGui::EndChild();
+            }
+        }
+        ImGui::End();
+
+        rlImGuiEnd();
+        EndDrawing();
+    }
+
+    rlImGuiShutdown();
+    CloseWindow();
+    sensor_nodes.clear();
+    sensor_nodes_relation.clear();
+    return 0;
+}
