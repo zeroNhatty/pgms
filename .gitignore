@@ -1,0 +1,75 @@
+# IDE / Editor
+
+.idea/
+.vscode/
+.fleet/
+.nova/
+.zed/
+.cursor/
+.codex/
+
+# OS
+
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+
+**/.env
+**/.env.*
+!**/.env.example
+
+# Logs
+
+**/logs/
+*.log
+
+# Node / Nuxt
+
+**/node_modules/
+
+# Nuxt
+gm/.output/
+gm/.data/
+gm/.nuxt/
+gm/.nitro/
+gm/.cache/
+gm/dist/
+
+# Test / coverage output
+gm/coverage/
+gm/playwright-report/
+gm/test-results/
+
+# PHP / Laravel
+
+server/vendor/
+
+server/public/build/
+server/public/fonts-manifest.dev.json
+server/public/hot/
+server/public/storage/
+
+server/storage/*.key
+server/storage/pail/
+
+server/.phpunit.cache/
+server/.phpunit.result.cache
+
+server/auth.json
+server/.phpactor.json
+server/_ide_helper.php
+
+# Laravel / Homestead
+server/Homestead.json
+server/Homestead.yaml
+
+# C / C++ / CMake
+
+sensor/build/
+sensor/cmake-build-debug/
+sensor/.cache/
+
+# Misc generated/cache files
+
+**/.cache/
