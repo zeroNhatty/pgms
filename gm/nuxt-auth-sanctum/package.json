@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "name": "nuxt-auth-sanctum",
+  "version": "0.0.0",
+  "main": "index.mjs",
+  "bin": "cli.mjs",
+  "dependencies": {},
+  "devDependencies": {}
+}
